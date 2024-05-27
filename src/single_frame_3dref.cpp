@@ -82,8 +82,8 @@ int main(int argc, char** argv){
     ros::Publisher correct_pc_pub = nh.advertise<sensor_msgs::PointCloud2>("Corrected_pointcloud", 10);
     
     ros::Rate loop_rate(2);
-    string data_path = "/home/krasus/ShanghaiTech/Mars_Lab/Reflection/Dataset/NewData/sca/hesai/";
-    string pose_file_path = "/home/krasus/ShanghaiTech/Mars_Lab/Reflection/Dataset/NewData/sca/hesai_pose.txt";
+    string data_path = "/home/krasus/ShanghaiTech/Mars_Lab/Reflection/Reflection_ws/src/Reflection_detection/demo_data/3dRef_data/";
+    string pose_file_path = "/home/krasus/ShanghaiTech/Mars_Lab/Reflection/Reflection_ws/src/Reflection_detection/demo_data/hesai_pose.txt";
 
     // Read point cloud file and pose file
     std::vector<std::pair<std::string, double>> fileTimestamp;
