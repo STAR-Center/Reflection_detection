@@ -32,15 +32,18 @@ Single frame algorithm for Velodyne HDL-32E
 
 ```
     roslaunch reflection_detection single_frame_detection_velodyne.launch
+    rosbag play /demo_data/dual_pointcloud.bag
 ```
 
 Single frame algorithm for 3DRef Hesai Pandar QT64
+Need to change data place in line 86-87 in single_frame_detection_3dref.launch
 
 ```
     roslaunch reflection_detection single_frame_detection_3dref.launch
 ```
 
 Multiple frame algorithm for 3DRef Hesai Pandar QT64
+Need to change data place in line 86-87 in single_frame_detection_3dref.launch
 
 ```
     roslaunch reflection_detection multi_frame_detection_3dref.launch
