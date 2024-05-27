@@ -1,0 +1,13 @@
+  <launch>
+
+  <node pkg="reflection_detection" type="multiple_3dref" name="multiple_3dref" output="screen">
+	<!-- <remap from="/livox_cloud" to="/velodyne_cloud_2" /> -->
+  </node>
+
+  <arg name="rviz" default="true" />
+	<group if="$(arg rviz)">
+		<node pkg="rviz" type="rviz" name="rviz" args="-d $(find reflection_detection)/rviz_cfg/multi_3dref.rviz" required = "true" />
+	</group>
+
+
+</launch>
