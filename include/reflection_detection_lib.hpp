@@ -311,6 +311,14 @@ void dualcheck(pcl::PointCloud<PointXYZ>::Ptr glass_pointcloud, ros::Publisher c
     pcl::toROSMsg(*Glass, GlassoriginCloud2);
     GlassoriginCloud2.header = strongestcloud.header;
 
+    for(int i = 0;i<Glass->points.size();i++){
+        pcl::PointXYZ p;
+        p.x = Glass->points[i].x;
+        p.y = Glass->points[i].y;
+        p.z = Glass->points[i].z;
+        glass_pointcloud->points.push_back(p);
+    }
+
     /* Searches for the closest reflective planes */
     /* We already have some points on a plane, so here we use RANSAC to find the plane,
      * put these planes into a vector and remove the inliers belong to these planes.
@@ -564,7 +572,7 @@ void dualcheck(pcl::PointCloud<PointXYZ>::Ptr glass_pointcloud, ros::Publisher c
         p.x = nearestPlaneCloudRGB.points[i].x;
         p.y = nearestPlaneCloudRGB.points[i].y;
         p.z = nearestPlaneCloudRGB.points[i].z;
-        glass_pointcloud->points.push_back(p);
+        // glass_pointcloud->points.push_back(p);
     }
     
 
@@ -1690,60 +1698,72 @@ void glassHandler(const pcl::PointCloud<PointXYZ>::Ptr &cloud,Eigen::Affine3d T_
     // cout<<std::setprecision(16)<<pose_vector_for_time[frame_index].timestamp<<endl;
     // frame_index++;
 
-        
-    pcl::ModelCoefficients::Ptr tempCoeff(new pcl::ModelCoefficients);
+    for(int i = 0;i<5 && transfered_cloud->size() > 300; i++)
+    {
+        pcl::ModelCoefficients::Ptr tempCoeff(new pcl::ModelCoefficients);
 
-    pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-    pcl::SACSegmentation<pcl::PointXYZ> sac;
-    sac.setInputCloud(transfered_cloud);
-    sac.setMethodType(pcl::SAC_RANSAC);
-    sac.setModelType(pcl::SACMODEL_PLANE);
-    sac.setDistanceThreshold(0.07);
-    sac.setMaxIterations(400);
-    sac.setProbability(0.9);
-    sac.segment(*inliers, *tempCoeff);
-    cout<<"inlier nums = "<<inliers->indices.size()<<endl;
+        pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+        pcl::SACSegmentation<pcl::PointXYZ> sac;
+        sac.setInputCloud(transfered_cloud);
+        sac.setMethodType(pcl::SAC_RANSAC);
+        sac.setModelType(pcl::SACMODEL_PLANE);
+        sac.setDistanceThreshold(0.07);
+        sac.setMaxIterations(400);
+        sac.setProbability(0.9);
+        sac.segment(*inliers, *tempCoeff);
+        cout<<"inlier nums = "<<inliers->indices.size()<<endl;
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr plane(new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::ExtractIndices<pcl::PointXYZ> extract;
-    extract.setInputCloud(transfered_cloud);
-    extract.setIndices(inliers);
-    extract.setNegative(false);
-    extract.filter(*plane);
-
-    pcl::ProjectInliers<pcl::PointXYZ> proj;
-    proj.setModelType(pcl::SACMODEL_PLANE);
-    proj.setInputCloud(plane);
-    proj.setModelCoefficients(tempCoeff);
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_projected(new pcl::PointCloud<pcl::PointXYZ>);
-    proj.filter(*cloud_projected);
-    pcl::ConvexHull<pcl::PointXYZ> hull;
-    hull.setInputCloud(cloud_projected);
-    pcl::PointCloud<pcl::PointXYZ>::Ptr hull_points(new pcl::PointCloud<pcl::PointXYZ>);
-    hull.reconstruct(*hull_points);
-    // add_plane_maker(hull_points, marker_pub, 0);
-    std::vector<double> newPlane;
-    if(tempCoeff->values[3]>0){
-        newPlane = {tempCoeff->values[0], tempCoeff->values[1], tempCoeff->values[2], tempCoeff->values[3]};
-    }else{
-        newPlane = {-tempCoeff->values[0], -tempCoeff->values[1], -tempCoeff->values[2], -tempCoeff->values[3]};
-    }
-    
-    PlaneInfo newPlaneInfo;
-    newPlaneInfo.coe = newPlane;
-    newPlaneInfo.keyframeNum = frame_index;
-    newPlaneInfo.observedTime = 1;
-    newPlaneInfo.hull_points = hull_points;
-    int match_flag = 0;
-    for(PlaneInfo& plane : GlobalMapPlaneCoe){
-        if(match_checker(newPlaneInfo, plane)){
-            match_flag = 1;
+        if(inliers->indices.size() < 120){
             break;
         }
-    }
-    if(match_flag == 0){
-        cout<<"add new glass plane"<<endl;
-        GlobalMapPlaneCoe.push_back(newPlaneInfo);
+
+        pcl::PointCloud<pcl::PointXYZ>::Ptr plane(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::ExtractIndices<pcl::PointXYZ> extract;
+        extract.setInputCloud(transfered_cloud);
+        extract.setIndices(inliers);
+        extract.setNegative(false);
+        extract.filter(*plane);
+
+        pcl::ExtractIndices<pcl::PointXYZ> extract_Neg;
+        extract_Neg.setInputCloud(transfered_cloud);
+        extract_Neg.setIndices(inliers);
+        extract_Neg.setNegative(true);
+        extract_Neg.filter(*transfered_cloud);
+
+        pcl::ProjectInliers<pcl::PointXYZ> proj;
+        proj.setModelType(pcl::SACMODEL_PLANE);
+        proj.setInputCloud(plane);
+        proj.setModelCoefficients(tempCoeff);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_projected(new pcl::PointCloud<pcl::PointXYZ>);
+        proj.filter(*cloud_projected);
+        pcl::ConvexHull<pcl::PointXYZ> hull;
+        hull.setInputCloud(cloud_projected);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr hull_points(new pcl::PointCloud<pcl::PointXYZ>);
+        hull.reconstruct(*hull_points);
+        // add_plane_maker(hull_points, marker_pub, 0);
+        std::vector<double> newPlane;
+        if(tempCoeff->values[3]>0){
+            newPlane = {tempCoeff->values[0], tempCoeff->values[1], tempCoeff->values[2], tempCoeff->values[3]};
+        }else{
+            newPlane = {-tempCoeff->values[0], -tempCoeff->values[1], -tempCoeff->values[2], -tempCoeff->values[3]};
+        }
+        
+        PlaneInfo newPlaneInfo;
+        newPlaneInfo.coe = newPlane;
+        newPlaneInfo.keyframeNum = frame_index;
+        newPlaneInfo.observedTime = 1;
+        newPlaneInfo.hull_points = hull_points;
+        int match_flag = 0;
+        for(PlaneInfo& plane : GlobalMapPlaneCoe){
+            if(match_checker(newPlaneInfo, plane)){
+                match_flag = 1;
+                break;
+            }
+        }
+        if(match_flag == 0){
+            cout<<"add new glass plane"<<endl;
+            GlobalMapPlaneCoe.push_back(newPlaneInfo);
+        }
     }
 
     for(int i = 0; i < GlobalMapPlaneCoe.size(); i++){
